@@ -55,8 +55,8 @@ create table if not exists public.audit_logs (
 alter table public.audit_logs enable row level security;
 
 -- Service role bypasses RLS. Client users must never read audit logs.
-create policy if not exists "audit_logs_deny_all_users"
-  on public.audit_logs for all
+create policy if not exists "audit_logs_deny_select"
+  on public.audit_logs for select
   using (false);
 
 -- ── waitlist_signups: unauthenticated INSERT from marketing site ──────────────────────────
@@ -84,6 +84,9 @@ create index if not exists idx_money_intakes_user_id
 create index if not exists idx_financial_snapshots_user_id
   on public.financial_snapshots(user_id);
 
+create index if not exists idx_financial_snapshots_intake_id
+  on public.financial_snapshots(intake_id);
+
 create index if not exists idx_debts_user_id
   on public.debts(user_id);
 
@@ -101,3 +104,9 @@ create index if not exists idx_activity_logs_user_id
 
 create index if not exists idx_activity_logs_occurred_at
   on public.activity_logs(occurred_at desc);
+
+create index if not exists idx_audit_logs_actor_id
+  on public.audit_logs(actor_id);
+
+create index if not exists idx_audit_logs_created_at
+  on public.audit_logs(created_at desc);
