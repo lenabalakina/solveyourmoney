@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Routes accessible without authentication
 const PUBLIC_PREFIXES = [
-  "/auth/",
+  "/callback",
   "/sign-in",
   "/sign-up",
   "/forgot-password",

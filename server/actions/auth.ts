@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { signUpSchema, authEmailSchema } from "@/lib/validation/forms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/server/services/audit";
@@ -107,7 +108,9 @@ export async function requestPasswordResetAction(
 ): Promise<AuthFormState> {
   const email = formData.get("email");
 
-  if (!email || typeof email !== "string" || !email.includes("@")) {
+  const emailSchema = z.string().email().max(254);
+  const parsed = emailSchema.safeParse(typeof email === "string" ? email.trim() : "");
+  if (!parsed.success) {
     return { status: "error", message: "Enter a valid email address." };
   }
 
@@ -127,8 +130,8 @@ export async function requestPasswordResetAction(
 
   // Supabase sends the reset email via its own SMTP. Configure SMTP in the
   // Supabase dashboard (Authentication → Email → SMTP settings) before launch.
-  await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+  await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${siteUrl}/callback?next=/dashboard`,
   });
 
   // Always return a generic message to prevent email enumeration attacks.
