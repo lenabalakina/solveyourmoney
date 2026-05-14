@@ -282,7 +282,8 @@ export function ImportContent() {
         status: "ready", when: "Just now",
       };
       setHistory(prev => [newFile, ...prev]);
-      setSaveResult({ ok: true, message: `${result.count} transaction${result.count === 1 ? "" : "s"} saved to your dashboard.` });
+      const dupNote = result.duplicates > 0 ? ` (${result.duplicates} duplicate${result.duplicates === 1 ? "" : "s"} skipped)` : "";
+      setSaveResult({ ok: true, message: `${result.count} transaction${result.count === 1 ? "" : "s"} saved to your dashboard.${dupNote}` });
       setStage("idle");
       setTransactions([]);
     } else {

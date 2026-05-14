@@ -19,7 +19,9 @@ const saveImportSchema = z.object({
   transactions: z.array(assignedTransactionSchema),
 });
 
-type SaveResult = { ok: true; count: number } | { ok: false; message: string };
+type SaveResult =
+  | { ok: true; count: number; duplicates: number }
+  | { ok: false; message: string };
 
 export async function saveImportedTransactions(
   input: unknown,
@@ -40,6 +42,7 @@ export async function saveImportedTransactions(
     (t) => t.assignment !== "ignore",
   );
   let savedCount = 0;
+  let duplicateCount = 0;
 
   for (const tx of toSave) {
     if (tx.assignment === "expense") {
@@ -57,7 +60,22 @@ export async function saveImportedTransactions(
           })
           .eq("id", tx.targetId)
           .eq("user_id", session.userId);
+        savedCount++;
       } else {
+        const { data: dup } = await supabase
+          .from("expenses")
+          .select("id")
+          .eq("user_id", session.userId)
+          .eq("category", tx.targetLabel ?? tx.description)
+          .eq("actual_amount", tx.amount)
+          .eq("period_start", periodStart)
+          .maybeSingle();
+
+        if (dup) {
+          duplicateCount++;
+          continue;
+        }
+
         await supabase.from("expenses").insert({
           user_id: session.userId,
           category: tx.targetLabel ?? tx.description,
@@ -65,8 +83,8 @@ export async function saveImportedTransactions(
           planned_amount: tx.amount,
           actual_amount: tx.amount,
         });
+        savedCount++;
       }
-      savedCount++;
     } else if (tx.assignment === "debt_payment" && tx.targetId) {
       const { data: debt } = await supabase
         .from("debts")
@@ -113,5 +131,5 @@ export async function saveImportedTransactions(
   revalidatePath("/dashboard/budget");
   revalidatePath("/dashboard/savings");
 
-  return { ok: true, count: savedCount };
+  return { ok: true, count: savedCount, duplicates: duplicateCount };
 }
