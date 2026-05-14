@@ -105,12 +105,20 @@ function Tip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SourceCard({ name, sub, icon }: { name: string; sub: string; icon: React.ReactNode }) {
+function SourceCard({ name, sub, icon, comingSoon }: { name: string; sub: string; icon: React.ReactNode; comingSoon?: boolean }) {
   return (
-    <div className="card flat" style={{ padding: 16, cursor: "pointer" }}>
+    <div className="card flat" style={{ padding: 16, cursor: comingSoon ? "default" : "pointer", position: "relative", opacity: comingSoon ? 0.55 : 1 }}>
       <span className="cat-ico" style={{ width: 34, height: 34 }}>{icon}</span>
       <div className="f-sm fw-500" style={{ marginTop: 12 }}>{name}</div>
-      <div className="f-xs muted">{sub}</div>
+      <div className="f-xs muted">{comingSoon ? "Coming soon" : sub}</div>
+      {comingSoon && (
+        <span style={{
+          position: "absolute", top: 10, right: 10,
+          fontSize: 10, fontWeight: 600, letterSpacing: "0.04em",
+          padding: "2px 7px", borderRadius: 99,
+          background: "var(--primary-soft)", color: "oklch(0.85 0.10 282)",
+        }}>Soon</span>
+      )}
     </div>
   );
 }
@@ -233,6 +241,11 @@ export function ImportContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "csv") {
+      setUploadError("Only CSV files are supported right now. PDF and other formats are coming soon.");
+      return;
+    }
     setFileName(file.name);
     setFileExt(file.name.split(".").pop()?.toUpperCase() ?? "FILE");
     setStage("uploading");
@@ -444,7 +457,7 @@ export function ImportContent() {
                     Drop a statement here
                   </div>
                   <div className="muted f-sm" style={{ marginTop: 4, maxWidth: 380, margin: "4px auto 0" }}>
-                    PDF, CSV, OFX, or QFX. We accept screenshots too — we&apos;ll read the numbers.
+                    CSV files supported. Export a statement from your bank and drop it here.
                   </div>
                   <div className="row gap-8" style={{ justifyContent: "center", marginTop: 18 }}>
                     <button className="btn primary" type="button" onClick={() => fileInputRef.current?.click()}>
@@ -454,7 +467,7 @@ export function ImportContent() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="application/pdf,.csv,.ofx,.qfx"
+                      accept=".csv"
                       onChange={handleInputChange}
                       style={{ display: "none" }}
                     />
@@ -516,10 +529,10 @@ export function ImportContent() {
             <span className="sub">Most banks · 11,000+ supported</span>
           </div>
           <div className="g-3" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
-            <SourceCard name="Bank PDFs"  sub="Monthly statements"       icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>} />
+            <SourceCard name="Bank PDFs"  sub="Monthly statements"       comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>} />
             <SourceCard name="CSV / TSV"  sub="Custom columns supported" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>} />
-            <SourceCard name="OFX / QFX"  sub="Quicken / GnuCash"        icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg>} />
-            <SourceCard name="Screenshot" sub="OCR-powered"              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/></svg>} />
+            <SourceCard name="OFX / QFX"  sub="Quicken / GnuCash"        comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg>} />
+            <SourceCard name="Screenshot" sub="OCR-powered"              comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/></svg>} />
           </div>
         </div>
 
