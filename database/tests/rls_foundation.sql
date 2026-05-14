@@ -1,8 +1,62 @@
 begin;
 
--- Smoke-test checklist for local verification:
--- 1. set auth context for user A and confirm only user A rows are visible
--- 2. set auth context for user B and confirm user A rows are hidden
--- 3. verify inserts fail when user_id does not match auth.uid()
+-- ── RLS smoke-test checklist ──────────────────────────────────────────────────
+--
+-- Run these manually in the Supabase SQL editor against your project.
+-- All tests must pass before going live.
+--
+-- HOW TO RUN:
+--   1. Open Supabase dashboard → SQL Editor
+--   2. Paste this file and run it
+--   3. All queries inside should return expected values
+--
+-- ── Test 1: User A cannot read User B's financial data ────────────────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- select count(*) from public.debts;               -- must return only user A rows
+-- select count(*) from public.expenses;             -- must return only user A rows
+-- select count(*) from public.savings_goals;        -- must return only user A rows
+-- select count(*) from public.learning_progress;    -- must return only user A rows
+-- select count(*) from public.activity_logs;        -- must return only user A rows
+-- select count(*) from public.financial_profiles;   -- must return only user A rows
+--
+-- ── Test 2: User cannot insert a row with another user's user_id ──────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- insert into public.debts (user_id, name, balance, monthly_payment)
+--   values ('user-b-uuid', 'Stolen', 0, 0);        -- must fail with RLS violation
+--
+-- ── Test 3: audit_logs is not readable by authenticated users ─────────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- select count(*) from public.audit_logs;           -- must return 0 rows (deny policy)
+--
+-- ── Test 4: waitlist_signups — anonymous users can insert ─────────────────────
+-- set local role anon;
+-- insert into public.waitlist_signups (email, source)
+--   values ('test@example.com', 'test');            -- must succeed
+--
+-- ── Test 5: waitlist_signups — authenticated users cannot read ────────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- select count(*) from public.waitlist_signups;     -- must return 0 rows or error
+--
+-- ── Test 6: Auth trigger creates profiles row on signup ───────────────────────
+-- (Test by signing up a new user via the app and confirming the profiles row exists)
+-- select * from public.profiles where id = '<new-user-uuid>';  -- must return 1 row
+-- select * from public.financial_profiles where user_id = '<new-user-uuid>';  -- must return 1 row
+--
+-- ── Test 7: learning_progress unique constraint allows upsert ─────────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- insert into public.learning_progress (user_id, slug, xp)
+--   values ('user-a-uuid', 'test-lesson', 80)
+--   on conflict (user_id, slug) do update set xp = excluded.xp;  -- must succeed
+--
+-- ── Test 8: activity_logs accepts metadata column ─────────────────────────────
+-- set local role authenticated;
+-- set local request.jwt.claims = '{"sub":"user-a-uuid"}';
+-- insert into public.activity_logs (user_id, kind, title, metadata)
+--   values ('user-a-uuid', 'test', 'Test activity', '{"source":"test"}'::jsonb);  -- must succeed
 
 rollback;

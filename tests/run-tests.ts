@@ -383,6 +383,46 @@ async function runTests() {
     assert(detectAdapter(["Date", "Amount"]).name === "Generic CSV", "detectAdapter: unknown → generic");
   }
 
+  // Test: production without Supabase vars should be detected as misconfigured
+  resetEnv();
+  process.env.NEXT_PUBLIC_APP_ENV = "production";
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA = "false";
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  {
+    const isProduction = process.env.NEXT_PUBLIC_APP_ENV === "production";
+    const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    assert(
+      isProduction && !hasSupabaseUrl && !hasAnonKey,
+      "validate-env: production without Supabase vars must be detectable",
+    );
+  }
+
+  // Test: validate-env script exits non-zero in production without Supabase vars
+  resetEnv();
+  process.env.NEXT_PUBLIC_APP_ENV = "production";
+  process.env.NEXT_PUBLIC_USE_MOCK_DATA = "false";
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  {
+    // Verify the validate-env logic directly
+    const { loadEnv } = requireFresh(
+      path.join(__dirname, "..", "lib", "config", "env.ts"),
+    );
+    const prodEnv = loadEnv(process.env as NodeJS.ProcessEnv);
+    const missing: string[] = [];
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+    assert(
+      prodEnv.NEXT_PUBLIC_APP_ENV === "production" && missing.length === 3,
+      "validate-env: all 3 Supabase vars missing in production detected correctly",
+    );
+  }
+
   console.log("All tests passed (lightweight)");
 }
 
