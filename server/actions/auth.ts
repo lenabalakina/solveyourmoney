@@ -100,3 +100,40 @@ export async function signOutAction() {
   await supabase?.auth.signOut();
   redirect("/");
 }
+
+export async function requestPasswordResetAction(
+  _state: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const email = formData.get("email");
+
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    return { status: "error", message: "Enter a valid email address." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  if (!supabase) {
+    return {
+      status: "error",
+      message: "Authentication is not configured. Add Supabase env vars before launch.",
+    };
+  }
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "http://localhost:3000";
+
+  // Supabase sends the reset email via its own SMTP. Configure SMTP in the
+  // Supabase dashboard (Authentication → Email → SMTP settings) before launch.
+  await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+  });
+
+  // Always return a generic message to prevent email enumeration attacks.
+  return {
+    status: "idle",
+    message: "If that email is registered, a reset link is on its way.",
+  };
+}

@@ -1,6 +1,14 @@
+"use client";
+
+import { useActionState } from "react";
 import Link from "next/link";
+import { requestPasswordResetAction, type AuthFormState } from "@/server/actions/auth";
+
+const initial: AuthFormState = { status: "idle", message: "" };
 
 export default function ForgotPasswordPage() {
+  const [state, formAction, isPending] = useActionState(requestPasswordResetAction, initial);
+
   return (
     <>
       <div className="card" style={{ padding: 28 }}>
@@ -22,7 +30,7 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: 13, color: "var(--fg-soft)", marginBottom: 20 }}>
           Enter your email and we&apos;ll send a reset link.
         </p>
-        <form style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="f-xs muted">Email</span>
             <input
@@ -45,8 +53,21 @@ export default function ForgotPasswordPage() {
               }}
             />
           </label>
-          <button className="btn primary" type="submit" style={{ width: "100%", marginTop: 4 }}>
-            Send reset link
+          {state.message && (
+            <p
+              className="f-xs"
+              style={{ color: state.status === "error" ? "var(--error, #f87171)" : "var(--fg-soft)" }}
+            >
+              {state.message}
+            </p>
+          )}
+          <button
+            className="btn primary"
+            type="submit"
+            disabled={isPending}
+            style={{ width: "100%", marginTop: 4 }}
+          >
+            {isPending ? "Sending…" : "Send reset link"}
           </button>
         </form>
       </div>
