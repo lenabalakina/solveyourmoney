@@ -13,7 +13,7 @@ export const ingCsvAdapter: CsvAdapter = {
   name: "ING (NL)",
 
   detect(headers: string[]): boolean {
-    const h = headers.map((x) => x.toLowerCase().replace(/[^a-z/]/g, ""));
+    const h = headers.map((x) => x.toLowerCase().replace(/[^a-z]/g, ""));
     return h.includes("datum") && h.some((x) => x.includes("afbij"));
   },
 

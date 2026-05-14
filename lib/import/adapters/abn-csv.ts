@@ -9,7 +9,9 @@ function parseAbnDate(d: string): string {
 }
 
 function parseAmount(s: string): number {
-  return parseFloat(s.replace(/\./g, "").replace(",", ".").trim()) || 0;
+  // ABN AMRO exports use European format: dot = thousands separator, comma = decimal
+  // e.g. "1.234,56" → 1234.56, "954,80" → 954.80
+  return parseFloat(s.trim().replace(/\./g, "").replace(",", ".")) || 0;
 }
 
 export const abnCsvAdapter: CsvAdapter = {

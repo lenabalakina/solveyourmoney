@@ -21,7 +21,13 @@ function parseDate(raw: string): string {
 }
 
 function parseAmount(s: string): number {
-  return parseFloat(s.replace(/[^\d.,-]/g, "").replace(",", ".")) || 0;
+  const clean = s.replace(/[^\d.,-]/g, "");
+  // European format: ends with ,XX (comma decimal) — strip thousand-dots first
+  if (/,\d{1,2}$/.test(clean)) {
+    return parseFloat(clean.replace(/\./g, "").replace(",", ".")) || 0;
+  }
+  // US/ISO format or plain integer
+  return parseFloat(clean.replace(/,/g, "")) || 0;
 }
 
 export const genericCsvAdapter: CsvAdapter = {

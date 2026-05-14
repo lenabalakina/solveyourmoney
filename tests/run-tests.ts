@@ -339,6 +339,50 @@ async function runTests() {
     assert(mockRes.xpPct >= 0 && mockRes.xpPct <= 100, "gamification mock: xpPct in range 0-100");
   }
 
+  // CSV adapter smoke tests
+  {
+    const { abnCsvAdapter } = requireFresh(
+      path.join(__dirname, "..", "lib", "import", "adapters", "abn-csv.ts"),
+    );
+    const { ingCsvAdapter } = requireFresh(
+      path.join(__dirname, "..", "lib", "import", "adapters", "ing-csv.ts"),
+    );
+    const { genericCsvAdapter } = requireFresh(
+      path.join(__dirname, "..", "lib", "import", "adapters", "generic-csv.ts"),
+    );
+    const { detectAdapter } = requireFresh(
+      path.join(__dirname, "..", "lib", "import", "adapters", "index.ts"),
+    );
+
+    // ABN detect
+    assert(abnCsvAdapter.detect(["Rekeningnummer", "Transactiedatum"]), "ABN: detects ABN headers");
+    assert(!abnCsvAdapter.detect(["Date", "Amount"]), "ABN: rejects generic headers");
+
+    // ABN parse expense
+    const abnRows = [{ Rekeningnummer: "NL12ABNA0123456789", Muntsoort: "EUR", Transactiedatum: "20260501", Beginsaldo: "1.000,00", Eindsaldo: "954,80", Omschrijving: "Albert Heijn" }];
+    const abnResult = abnCsvAdapter.parse(abnRows);
+    assert(abnResult.transactions.length === 1, "ABN parse: one tx");
+    assert(abnResult.transactions[0].amount === 45.20, "ABN parse: correct amount");
+    assert(abnResult.transactions[0].direction_hint === "EXPENSE", "ABN parse: expense");
+
+    // ING detect
+    assert(ingCsvAdapter.detect(["Datum", "Af Bij", "Bedrag (EUR)"]), "ING: detects ING headers");
+
+    // Generic always detects, parses, handles empty
+    assert(genericCsvAdapter.detect([]), "Generic: always detects");
+    const genericEmpty = genericCsvAdapter.parse([]);
+    assert(genericEmpty.transactions.length === 0 && genericEmpty.errors.length > 0, "Generic: empty = errors");
+    const genericRows = [{ Date: "2026-05-01", Description: "Coffee", Amount: "-3.50" }];
+    const genericResult = genericCsvAdapter.parse(genericRows);
+    assert(genericResult.transactions.length === 1, "Generic: parses one tx");
+    assert(genericResult.transactions[0].amount === 3.50, "Generic: correct amount");
+
+    // detectAdapter routing
+    assert(detectAdapter(["Datum", "Af Bij"]).name === "ING (NL)", "detectAdapter: ING headers → ING");
+    assert(detectAdapter(["Rekeningnummer", "Transactiedatum"]).name === "ABN AMRO (NL)", "detectAdapter: ABN headers → ABN");
+    assert(detectAdapter(["Date", "Amount"]).name === "Generic CSV", "detectAdapter: unknown → generic");
+  }
+
   console.log("All tests passed (lightweight)");
 }
 
