@@ -22,6 +22,21 @@ try {
     );
   }
 
+  // Production requires Supabase credentials — fail the build if missing.
+  if (env.NEXT_PUBLIC_APP_ENV === "production") {
+    const missing: string[] = [];
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+    if (missing.length > 0) {
+      console.error(
+        `validate-env: Missing required production env vars: ${missing.join(", ")}`,
+      );
+      process.exitCode = 2;
+      throw new Error(`Required in production: ${missing.join(", ")}`);
+    }
+  }
+
   console.log("validate-env: OK", {
     env: env.NEXT_PUBLIC_APP_ENV,
     useMock: env.USE_MOCK,
@@ -29,5 +44,5 @@ try {
 } catch (err: unknown) {
   const message = err instanceof Error ? err.message : "Unknown error";
   console.error("validate-env: Configuration invalid", message);
-  process.exitCode = 1;
+  if (!process.exitCode) process.exitCode = 1;
 }
