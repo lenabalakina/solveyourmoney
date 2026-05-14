@@ -131,7 +131,7 @@ export async function requestPasswordResetAction(
   // Supabase sends the reset email via its own SMTP. Configure SMTP in the
   // Supabase dashboard (Authentication → Email → SMTP settings) before launch.
   await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${siteUrl}/callback?next=/dashboard`,
+    redirectTo: `${siteUrl}/callback?next=/reset-password`,
   });
 
   // Always return a generic message to prevent email enumeration attacks.
@@ -139,4 +139,32 @@ export async function requestPasswordResetAction(
     status: "idle",
     message: "If that email is registered, a reset link is on its way.",
   };
+}
+
+export async function updatePasswordAction(
+  _state: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const password = formData.get("password");
+
+  if (!password || typeof password !== "string" || password.length < 8) {
+    return { status: "error", message: "Password must be at least 8 characters." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  if (!supabase) {
+    return {
+      status: "error",
+      message: "Authentication is not configured. Add Supabase env vars before launch.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { status: "error", message: "We could not update your password. The link may have expired." };
+  }
+
+  redirect("/dashboard");
 }
