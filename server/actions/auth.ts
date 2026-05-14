@@ -147,8 +147,10 @@ export async function updatePasswordAction(
 ): Promise<AuthFormState> {
   const password = formData.get("password");
 
-  if (!password || typeof password !== "string" || password.length < 8) {
-    return { status: "error", message: "Password must be at least 8 characters." };
+  const passwordSchema = z.string().min(8).max(128);
+  const parsedPassword = passwordSchema.safeParse(typeof password === "string" ? password : "");
+  if (!parsedPassword.success) {
+    return { status: "error", message: "Password must be 8–128 characters." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -160,10 +162,10 @@ export async function updatePasswordAction(
     };
   }
 
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password: parsedPassword.data });
 
   if (error) {
-    return { status: "error", message: "We could not update your password. The link may have expired." };
+    return { status: "error", message: "We could not update your password. The reset link may have expired — request a new one at /forgot-password." };
   }
 
   redirect("/dashboard");
