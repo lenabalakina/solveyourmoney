@@ -224,6 +224,7 @@ export function ImportContent() {
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [fileExt, setFileExt] = useState("FILE");
   const [transactions, setTransactions] = useState<AssignedTransaction[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -233,6 +234,7 @@ export function ImportContent() {
 
   async function handleFile(file: File) {
     setFileName(file.name);
+    setFileExt(file.name.split(".").pop()?.toUpperCase() ?? "FILE");
     setStage("uploading");
     setProgress(0);
     setUploadError(null);
@@ -278,7 +280,7 @@ export function ImportContent() {
     if (result.ok) {
       const newFile: ImportFile = {
         id: `f${Date.now()}`, name: fileName,
-        source: "Bank PDF", period: "Imported", rows: transactions.length,
+        source: fileExt === "CSV" ? "CSV" : "Bank PDF", period: "Imported", rows: transactions.length,
         status: "ready", when: "Just now",
       };
       setHistory(prev => [newFile, ...prev]);
@@ -297,6 +299,7 @@ export function ImportContent() {
     setTransactions([]);
     setProgress(0);
     setFileName("");
+    setFileExt("FILE");
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -472,7 +475,7 @@ export function ImportContent() {
                     <span className="cat-ico" style={{ width: 44, height: 44, borderRadius: 12, background: "var(--primary-soft)", color: "oklch(0.85 0.10 282)" }}>
                       <svg viewBox="0 0 24 24" style={{ width: 18, height: 18 }}>
                         <rect x="5" y="3" width="14" height="18" rx="2" fill="oklch(0.66 0.18 282 / 0.4)" stroke="oklch(0.78 0.16 282)" strokeWidth="1.2"/>
-                        <text x="12" y="16" textAnchor="middle" fontSize="6.5" fontFamily="var(--font-mono)" fill="oklch(0.98 0 0)">PDF</text>
+                        <text x="12" y="16" textAnchor="middle" fontSize="6.5" fontFamily="var(--font-mono)" fill="oklch(0.98 0 0)">{fileExt}</text>
                       </svg>
                     </span>
                     <div style={{ textAlign: "left" }}>
