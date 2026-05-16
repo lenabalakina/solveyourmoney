@@ -2,7 +2,9 @@
 
 import { useState, useRef } from "react";
 import { saveImportedTransactions } from "@/server/actions/import";
+import { formatCurrency } from "@/lib/format";
 import type { ParsedTransaction } from "@/lib/import/parseBankStatement";
+import type { ImportSession } from "@/features/imports/services/importsSchema";
 
 type Stage = "idle" | "uploading" | "parsing" | "review";
 
@@ -10,28 +12,23 @@ type AssignedTransaction = ParsedTransaction & {
   assignment: "debt_payment" | "expense" | "savings" | "ignore";
 };
 
-type ImportFile = {
-  id: string;
-  name: string;
-  source: string;
-  period: string;
-  rows: number;
-  status: "ready" | "review" | "partial" | "error";
-  when: string;
-  need?: number;
-  partial?: string;
+type ImportMetrics = {
+  importsThisMonth: number;
+  transactionsThisMonth: number;
+  totalSessions: number;
+  latestImportDate: string | null;
 };
 
-const SEED_FILES: ImportFile[] = [
-  { id: "f1", name: "Chase_Statement_Apr-2026.pdf",  source: "Bank PDF", period: "Apr 1 – Apr 30",  rows: 84,  status: "ready",   when: "2 hours ago" },
-  { id: "f2", name: "Ally_Savings_Apr-2026.csv",      source: "CSV",      period: "Apr 1 – Apr 30",  rows: 12,  status: "ready",   when: "2 hours ago" },
-  { id: "f3", name: "Visa_Statement_Mar-2026.pdf",    source: "Bank PDF", period: "Mar 1 – Mar 31",  rows: 64,  status: "review",  when: "Yesterday", need: 10 },
-  { id: "f4", name: "Robinhood_Activity_Q1.csv",      source: "CSV",      period: "Jan – Mar 2026",  rows: 18,  status: "ready",   when: "3 days ago" },
-  { id: "f5", name: "screenshot_2026-05-02.png",      source: "OCR",      period: "May 1 – May 2",   rows: 6,   status: "partial", when: "May 2", partial: "2 rows skipped" },
-];
-
-function fmt(v: number) {
-  return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatRelDate(iso: string) {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const diffH = Math.floor(diffMs / 3600000);
+  if (diffH < 1) return "Just now";
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "Yesterday";
+  if (diffD < 7) return `${diffD} days ago`;
+  return d.toLocaleDateString("nl-NL", { month: "short", day: "numeric" });
 }
 
 function UploadGlyph() {
@@ -65,14 +62,6 @@ function CheckIcon({ size = 10 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12.5l4 4 10-10"/>
-    </svg>
-  );
-}
-
-function SparkleIcon({ size = 10 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/>
     </svg>
   );
 }
@@ -123,15 +112,18 @@ function SourceCard({ name, sub, icon, comingSoon }: { name: string; sub: string
   );
 }
 
-function ImportRow({ f }: { f: ImportFile }) {
-  const statusMap: Record<ImportFile["status"], { pill: string; label: string; icon: React.ReactNode }> = {
-    ready:   { pill: "success", label: "Imported",     icon: <CheckIcon size={10} /> },
-    review:  { pill: "warn",    label: "Needs review", icon: <SparkleIcon size={10} /> },
-    partial: { pill: "warn",    label: "Partial",      icon: <SparkleIcon size={10} /> },
-    error:   { pill: "danger",  label: "Failed",       icon: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10l5 5 5-5"/></svg> },
-  };
-  const s = statusMap[f.status];
-  const ext = f.name.split(".").pop()?.toUpperCase() ?? "FILE";
+function StatusPill({ status }: { status: ImportSession["status"] }) {
+  const map = {
+    complete: { pill: "success", label: "Imported" },
+    partial:  { pill: "warn",    label: "Partial"  },
+    failed:   { pill: "danger",  label: "Failed"   },
+  } as const;
+  const s = map[status];
+  return <span className={`pill ${s.pill}`}>{s.label}</span>;
+}
+
+function ImportRow({ f }: { f: ImportSession }) {
+  const ext = f.filename.split(".").pop()?.toUpperCase() ?? "FILE";
   return (
     <tr>
       <td>
@@ -140,18 +132,26 @@ function ImportRow({ f }: { f: ImportFile }) {
             <span className="mono" style={{ fontSize: 10, color: "var(--fg-soft)" }}>{ext}</span>
           </span>
           <div>
-            <div className="f-sm fw-500" style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
-            <div className="f-xs muted">{f.partial ?? "All rows accepted"}</div>
+            <div className="f-sm fw-500" style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.filename}</div>
+            <div className="f-xs muted">
+              {f.duplicateCount > 0 ? `${f.duplicateCount} duplicate${f.duplicateCount !== 1 ? "s" : ""} skipped` : "All rows accepted"}
+            </div>
           </div>
         </div>
       </td>
-      <td className="muted f-sm">{f.source}</td>
-      <td className="mono f-sm">{f.period}</td>
-      <td className="num" style={{ textAlign: "right" }}>{f.rows}</td>
+      <td className="muted f-sm">{f.sourceType}</td>
+      <td className="num" style={{ textAlign: "right" }}>{f.savedCount}</td>
+      <td><StatusPill status={f.status} /></td>
+      <td className="muted f-sm">{formatRelDate(f.createdAt)}</td>
       <td>
-        <span className={`pill ${s.pill}`}>{s.icon} {s.label}{f.need ? ` · ${f.need}` : ""}</span>
+        <a
+          href={`/dashboard/import/${f.id}`}
+          className="btn ghost"
+          style={{ fontSize: 12, height: 28, padding: "0 10px" }}
+        >
+          View
+        </a>
       </td>
-      <td className="muted f-sm">{f.when}</td>
     </tr>
   );
 }
@@ -171,27 +171,23 @@ function ParsePreview({
 }) {
   const preview = transactions.slice(0, 8);
   const total = transactions.length;
-  const toConfirm = 0; // real confidence scoring not yet available from parser
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div className="row between" style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
         <div>
           <div className="card-title">Review parsed transactions</div>
           <div className="card-sub">
-            {total} rows found in <span className="mono soft">{fileName}</span> · 96% confidence overall
+            {total} rows found in <span className="mono soft">{fileName}</span>
           </div>
         </div>
-        <div className="row gap-8">
-          <span className="pill success"><CheckIcon size={10} /> {total - toConfirm} high confidence</span>
-          {toConfirm > 0 && <span className="pill warn">{toConfirm} to confirm</span>}
-        </div>
+        <span className="pill success"><CheckIcon size={10} /> {total} rows ready</span>
       </div>
       <table className="tbl">
         <thead>
           <tr>
             <th>Date</th><th>Merchant</th>
             <th style={{ textAlign: "right" }}>Amount</th>
-            <th>Category</th><th>Confidence</th>
+            <th>Category</th>
           </tr>
         </thead>
         <tbody>
@@ -200,24 +196,17 @@ function ParsePreview({
               <td className="mono muted">{tx.date}</td>
               <td>{tx.description}</td>
               <td className="num" style={{ textAlign: "right", color: tx.type === "debit" ? "var(--fg)" : "var(--success)" }}>
-                {tx.type === "debit" ? "−" : "+"}${fmt(tx.amount)}
+                {tx.type === "debit" ? "−" : "+"}{formatCurrency(tx.amount)}
               </td>
               <td><span className="pill">Expense</span></td>
-              <td>
-                <span className="row gap-8">
-                  <span style={{ width: 6, height: 6, borderRadius: 9, background: "var(--success)", flexShrink: 0 }} />
-                  High
-                </span>
-              </td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className="row between" style={{ padding: "14px 18px", borderTop: "1px solid var(--line)" }}>
-        <span className="f-xs muted">Showing {preview.length} of {total} · Open full review to inspect the rest.</span>
+        <span className="f-xs muted">Showing {preview.length} of {total}</span>
         <div className="row gap-8">
           <button className="btn ghost" onClick={onCancel} type="button" disabled={saving}>Cancel</button>
-          <button className="btn" type="button" disabled={saving}>Open full review</button>
           <button className="btn primary" onClick={onAccept} type="button" disabled={saving}>
             <CheckIcon size={13} /> {saving ? "Saving…" : `Import ${total} row${total === 1 ? "" : "s"}`}
           </button>
@@ -227,7 +216,13 @@ function ParsePreview({
   );
 }
 
-export function ImportContent() {
+export function ImportContent({
+  initialHistory,
+  metrics,
+}: {
+  initialHistory: ImportSession[];
+  metrics: ImportMetrics;
+}) {
   const [stage, setStage] = useState<Stage>("idle");
   const [progress, setProgress] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -236,9 +231,18 @@ export function ImportContent() {
   const [transactions, setTransactions] = useState<AssignedTransaction[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [history, setHistory] = useState<ImportFile[]>(SEED_FILES);
+  const [history, setHistory] = useState<ImportSession[]>(initialHistory);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  const now = new Date();
+  const thisMonthSessions = history.filter((s) => {
+    const d = new Date(s.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const liveImportsThisMonth = thisMonthSessions.length;
+  const liveTxThisMonth = thisMonthSessions.reduce((s, i) => s + i.savedCount, 0);
 
   async function handleFile(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase();
@@ -253,7 +257,6 @@ export function ImportContent() {
     setUploadError(null);
     setSaveResult(null);
 
-    // Animate upload progress
     let p = 0;
     const tick = setInterval(() => {
       p += 6 + Math.random() * 10;
@@ -288,17 +291,28 @@ export function ImportContent() {
 
   async function handleAccept() {
     setSaving(true);
-    const result = await saveImportedTransactions({ transactions });
+    const result = await saveImportedTransactions({
+      transactions,
+      filename: fileName,
+      sourceType: fileExt,
+    });
     setSaving(false);
     if (result.ok) {
-      const newFile: ImportFile = {
-        id: `f${Date.now()}`, name: fileName,
-        source: fileExt === "CSV" ? "CSV" : "Bank PDF", period: "Imported", rows: transactions.length,
-        status: "ready", when: "Just now",
+      const newSession: ImportSession = {
+        id: result.importSessionId,
+        filename: fileName,
+        sourceType: fileExt,
+        transactionCount: transactions.length,
+        savedCount: result.count,
+        duplicateCount: result.duplicates,
+        status: result.count > 0 ? "complete" : "partial",
+        createdAt: new Date().toISOString(),
       };
-      setHistory(prev => [newFile, ...prev]);
-      const dupNote = result.duplicates > 0 ? ` (${result.duplicates} duplicate${result.duplicates === 1 ? "" : "s"} skipped)` : "";
-      setSaveResult({ ok: true, message: `${result.count} transaction${result.count === 1 ? "" : "s"} saved to your dashboard.${dupNote}` });
+      setHistory(prev => [newSession, ...prev]);
+      const dupNote = result.duplicates > 0
+        ? ` (${result.duplicates} duplicate${result.duplicates === 1 ? "" : "s"} skipped)`
+        : "";
+      setSaveResult({ ok: true, message: `${result.count} transaction${result.count === 1 ? "" : "s"} saved.${dupNote}` });
       setStage("idle");
       setTransactions([]);
     } else {
@@ -327,73 +341,52 @@ export function ImportContent() {
     if (file) handleFile(file);
   }
 
+  function scrollToHistory() {
+    historyRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
   return (
     <>
-      {/* Header */}
       <div className="page-hd">
         <div>
           <h1>Import</h1>
-          <div className="sub">Upload statements, CSVs, or screenshots. We turn them into clean transactions.</div>
+          <div className="sub">Upload statements or CSVs. We turn them into clean transactions.</div>
         </div>
-        <div className="row gap-8">
-          <button className="btn" type="button">
+        {history.length > 0 && (
+          <button className="btn" type="button" onClick={scrollToHistory}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>
             </svg>
             Browse history
           </button>
-        </div>
+        )}
       </div>
 
-      {/* Metrics */}
       <div className="metrics">
         <div className="metric accent">
-          <div className="lbl">
-            <span className="ico">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>
-            </span>
-            Imported this month
-          </div>
-          <div className="val">3<span className="cents"> files</span></div>
-          <span className="delta up">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 14l5-5 5 5"/></svg>
-            248 transactions parsed
-          </span>
+          <div className="lbl">Imports this month</div>
+          <div className="val">{liveImportsThisMonth}<span className="cents"> files</span></div>
+          {liveTxThisMonth > 0
+            ? <span className="delta up"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 14l5-5 5 5"/></svg>{liveTxThisMonth} transactions</span>
+            : <span className="delta neut">No imports yet</span>
+          }
         </div>
         <div className="metric">
-          <div className="lbl">
-            <span className="ico"><CheckIcon size={13} /></span>
-            Auto-categorised
-          </div>
-          <div className="val">96<span className="cents">%</span></div>
-          <span className="delta neut">10 awaiting your review</span>
+          <div className="lbl">Total imported</div>
+          <div className="val">{history.reduce((s, i) => s + i.savedCount, 0)}<span className="cents"> tx</span></div>
+          <span className="delta neut">All time</span>
         </div>
         <div className="metric">
-          <div className="lbl">
-            <span className="ico">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>
-              </svg>
-            </span>
-            Earliest record
-          </div>
-          <div className="val" style={{ fontSize: 22 }}>Jan 2024</div>
-          <span className="delta neut">28 months of history</span>
+          <div className="lbl">Total files</div>
+          <div className="val" style={{ fontSize: 22 }}>{history.length}</div>
+          <span className="delta neut">Across all imports</span>
         </div>
         <div className="metric">
-          <div className="lbl">
-            <span className="ico">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="8"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/>
-              </svg>
-            </span>
-            Saved you
+          <div className="lbl">Latest import</div>
+          <div className="val" style={{ fontSize: 18 }}>
+            {history.length > 0 ? formatRelDate(history[0].createdAt) : "—"}
           </div>
-          <div className="val" style={{ fontSize: 22 }}>~14 hrs</div>
-          <span className="delta up">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 14l5-5 5 5"/></svg>
-            vs. spreadsheet manual entry
-          </span>
+          <span className="delta neut">{history.length > 0 ? history[0].filename.split(".").pop()?.toUpperCase() : "No imports yet"}</span>
         </div>
       </div>
 
@@ -409,7 +402,6 @@ export function ImportContent() {
       )}
 
       <div className="g-12" style={{ marginTop: 16 }}>
-        {/* Upload zone (span 8) */}
         <div style={{ gridColumn: "span 8" }}>
           {stage === "review" ? (
             <ParsePreview
@@ -435,7 +427,6 @@ export function ImportContent() {
                 position: "relative", overflow: "hidden",
               }}
             >
-              {/* Dashed border inner */}
               <div style={{
                 position: "absolute", inset: 14, borderRadius: 14,
                 backgroundImage: [
@@ -450,7 +441,7 @@ export function ImportContent() {
                 pointerEvents: "none", opacity: 0.6,
               }} />
 
-              {stage === "idle" && (
+              {(stage === "idle") && (
                 <div style={{ textAlign: "center", position: "relative" }}>
                   <UploadGlyph />
                   <div style={{ fontSize: 18, fontWeight: 520, letterSpacing: "-0.02em", marginTop: 14 }}>
@@ -492,7 +483,7 @@ export function ImportContent() {
                       </svg>
                     </span>
                     <div style={{ textAlign: "left" }}>
-                      <div className="f-sm fw-500">{fileName || "Statement.pdf"}</div>
+                      <div className="f-sm fw-500">{fileName || "Statement.csv"}</div>
                       <div className="f-xs muted mono">Uploading…</div>
                     </div>
                   </div>
@@ -504,9 +495,6 @@ export function ImportContent() {
                       <span className="f-xs muted">{stage === "uploading" ? "Uploading securely" : "Reading transactions"}…</span>
                       <span className="mono f-xs">{Math.round(progress)}%</span>
                     </div>
-                  </div>
-                  <div className="muted f-xs" style={{ marginTop: 18 }}>
-                    {stage === "uploading" ? "Encrypted with your device key." : "Matching merchants, splitting fees, suggesting categories."}
                   </div>
                 </div>
               )}
@@ -523,20 +511,18 @@ export function ImportContent() {
             </div>
           )}
 
-          {/* Supported sources */}
           <div className="section-hd">
             <h2>Supported sources</h2>
-            <span className="sub">Most banks · 11,000+ supported</span>
+            <span className="sub">ING, ABN AMRO, generic CSV</span>
           </div>
           <div className="g-3" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
             <SourceCard name="Bank PDFs"  sub="Monthly statements"       comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>} />
-            <SourceCard name="CSV / TSV"  sub="Custom columns supported" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>} />
+            <SourceCard name="CSV / TSV"  sub="ING, ABN, generic" icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>} />
             <SourceCard name="OFX / QFX"  sub="Quicken / GnuCash"        comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8"/><path d="M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg>} />
             <SourceCard name="Screenshot" sub="OCR-powered"              comingSoon icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/></svg>} />
           </div>
         </div>
 
-        {/* Right side cards (span 4) */}
         <div style={{ gridColumn: "span 4", display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="card">
             <div className="card-head">
@@ -562,28 +548,35 @@ export function ImportContent() {
         </div>
       </div>
 
-      {/* Recent imports table */}
-      <div className="section-hd">
+      <div className="section-hd" ref={historyRef}>
         <h2>Recent imports</h2>
-        <span className="muted f-xs">Last 30 days</span>
+        <span className="muted f-xs">Last 50 imports</span>
       </div>
-      <div className="card flat" style={{ padding: 0, overflow: "hidden" }}>
-        <table className="tbl">
-          <thead>
-            <tr>
-              <th>File</th>
-              <th>Source</th>
-              <th>Period</th>
-              <th style={{ textAlign: "right" }}>Rows</th>
-              <th>Status</th>
-              <th>Imported</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map(f => <ImportRow key={f.id} f={f} />)}
-          </tbody>
-        </table>
-      </div>
+
+      {history.length === 0 ? (
+        <div className="card" style={{ padding: "40px 24px", textAlign: "center" }}>
+          <div className="card-title" style={{ marginBottom: 8 }}>No imports yet</div>
+          <div className="muted f-sm">Upload your first bank statement to see your history here.</div>
+        </div>
+      ) : (
+        <div className="card flat" style={{ padding: 0, overflow: "hidden" }}>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Source</th>
+                <th style={{ textAlign: "right" }}>Saved</th>
+                <th>Status</th>
+                <th>Imported</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map(f => <ImportRow key={f.id} f={f} />)}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
