@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import { Bell, Sparkles, Coins } from "lucide-react";
 import type { Notification } from "@/features/notifications/services/notificationsSchema";
@@ -14,7 +15,6 @@ function formatRelDate(iso: string) {
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffH = Math.floor(diffMs / 3600000);
-  if (diffH < 1) return "Today";
   if (diffH < 24) return "Today";
   const diffD = Math.floor(diffH / 24);
   if (diffD === 1) return "Yesterday";
@@ -101,7 +101,7 @@ export function NotificationsContent({
   const counts = {
     all:     items.length,
     unread:  items.filter((i) => !i.read).length,
-    wins:    items.filter((i) => i.kind === "win").length,
+    win:     items.filter((i) => i.kind === "win").length,
     insight: items.filter((i) => i.kind === "insight").length,
   };
 
@@ -111,8 +111,12 @@ export function NotificationsContent({
     filter === "win"     ? items.filter((i) => i.kind === "win") :
     items.filter((i) => i.kind === "insight");
 
+  const sorted = [...filtered].sort((a, b) =>
+    new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+  );
+
   const groups: Record<string, UINotif[]> = {};
-  filtered.forEach((n) => {
+  sorted.forEach((n) => {
     const day = formatRelDate(n.occurredAt);
     (groups[day] ??= []).push(n);
   });
@@ -123,7 +127,7 @@ export function NotificationsContent({
   const FILTERS: { id: Filter; label: string; count: number }[] = [
     { id: "all",     label: "All",      count: counts.all },
     { id: "unread",  label: "Unread",   count: counts.unread },
-    { id: "win",     label: "Wins",     count: counts.wins },
+    { id: "win",     label: "Wins",     count: counts.win },
     { id: "insight", label: "Insights", count: counts.insight },
   ];
 
@@ -147,7 +151,7 @@ export function NotificationsContent({
         </div>
         <div className="metric">
           <div className="lbl"><span className="ico"><Sparkles size={13} /></span>Big wins</div>
-          <div className="val">{counts.wins}</div>
+          <div className="val">{counts.win}</div>
           <span className="delta neut">This account</span>
         </div>
         <div className="metric">
@@ -227,7 +231,7 @@ export function NotificationsContent({
                 </button>
               ))}
             </div>
-            <div className="f-xs muted mt-12" style={{ marginTop: 10 }}>
+            <div className="f-xs muted" style={{ marginTop: 10 }}>
               Digest emails are not yet sent — this preference will be used when email delivery is enabled.
             </div>
           </div>
