@@ -99,7 +99,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
 
       {/* Right panel — full width on mobile, right column at lg */}
       <div className="flex-1 flex items-center justify-center px-5 py-12">
-        <div className="w-full max-w-sm sm:max-w-md">
+        <div className="w-full max-w-[400px]">
           {children}
         </div>
       </div>
