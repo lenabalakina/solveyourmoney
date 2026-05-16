@@ -51,7 +51,7 @@ export async function signUpAction(
   });
 
   if (error) {
-    return { status: "error", message: error.message };
+    return { status: "error", message: "Something went wrong. Please try again." };
   }
 
   await writeAuditLog({
