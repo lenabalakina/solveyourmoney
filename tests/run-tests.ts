@@ -431,6 +431,27 @@ async function runTests() {
     assert(result.includes("1.234") || result.includes("1,234"), `formatCurrency must format 1234, got: ${result}`);
   }
 
+  // Test: imports schema validates correctly
+  {
+    resetEnv();
+    process.env.NEXT_PUBLIC_APP_ENV = "local";
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA = "true";
+    const mock = requireFresh(
+      path.join(__dirname, "..", "features", "imports", "services", "importsMockService.ts"),
+    );
+    const schema = requireFresh(
+      path.join(__dirname, "..", "features", "imports", "services", "importsSchema.ts"),
+    );
+    const result = mock.getImports({ userId: "user-1" });
+    schema.ImportsResponseSchema.parse(result);
+    assert(Array.isArray(result.sessions), "imports mock: sessions is array");
+
+    const detail = mock.getImportDetail({ userId: "user-1", importId: result.sessions[0]?.id ?? "x" });
+    if (detail) {
+      schema.ImportSessionSchema.parse(detail);
+    }
+  }
+
   console.log("All tests passed (lightweight)");
 }
 
