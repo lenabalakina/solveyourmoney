@@ -293,6 +293,9 @@ function revalidateDashboard() {
 export async function createSavingsGoal(input: {
   name: string;
   targetAmount: number;
+  currentAmount?: number;
+  monthlyContribution?: number;
+  targetDate?: string | null;
 }): Promise<ActionResult> {
   const session = await requireSession();
   const parsed = savingsGoalSchema.safeParse(input);
@@ -311,7 +314,9 @@ export async function createSavingsGoal(input: {
       user_id: session.userId,
       name: parsed.data.name,
       target_amount: parsed.data.targetAmount,
-      saved_amount: 0,
+      saved_amount: parsed.data.currentAmount ?? 0,
+      monthly_contribution: parsed.data.monthlyContribution ?? 0,
+      target_date: parsed.data.targetDate ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

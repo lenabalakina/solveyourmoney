@@ -471,6 +471,27 @@ async function runTests() {
     }
   }
 
+  // Test: savingsGoalSchema accepts optional fields
+  {
+    const forms = requireFresh(path.join(__dirname, "..", "lib", "validation", "forms.ts"));
+    const full = forms.savingsGoalSchema.parse({
+      name: "Holiday Fund",
+      targetAmount: 1500,
+      currentAmount: 200,
+      monthlyContribution: 100,
+      targetDate: "2027-06-01",
+    });
+    assert(full.name === "Holiday Fund", "savingsGoalSchema: name preserved");
+    assert(full.currentAmount === 200, "savingsGoalSchema: currentAmount accepted");
+    assert(full.monthlyContribution === 100, "savingsGoalSchema: monthlyContribution accepted");
+    assert(full.targetDate === "2027-06-01", "savingsGoalSchema: targetDate accepted");
+
+    const minimal = forms.savingsGoalSchema.parse({ name: "Emergency", targetAmount: 5000 });
+    assert(minimal.currentAmount === 0, "savingsGoalSchema: currentAmount defaults to 0");
+    assert(minimal.monthlyContribution === 0, "savingsGoalSchema: monthlyContribution defaults to 0");
+    assert(minimal.targetDate == null, "savingsGoalSchema: targetDate defaults to null");
+  }
+
   console.log("All tests passed (lightweight)");
 }
 

@@ -60,4 +60,7 @@ export const learningCompletionSchema = z.object({
 export const savingsGoalSchema = z.object({
   name: z.string().min(2).max(120),
   targetAmount: money.min(1),
+  currentAmount: money.optional().default(0),
+  monthlyContribution: money.optional().default(0),
+  targetDate: z.string().nullable().optional().default(null),
 });
