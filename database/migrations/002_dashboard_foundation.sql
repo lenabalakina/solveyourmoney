@@ -72,32 +72,98 @@ alter table public.savings_goals enable row level security;
 alter table public.learning_progress enable row level security;
 alter table public.activity_logs enable row level security;
 
-create policy if not exists "financial_profiles_all_own"
-on public.financial_profiles for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'financial_profiles'
+      AND policyname = 'financial_profiles_all_own'
+  ) THEN
+    CREATE POLICY "financial_profiles_all_own"
+      ON public.financial_profiles
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "debts_all_own"
-on public.debts for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'debts'
+      AND policyname = 'debts_all_own'
+  ) THEN
+    CREATE POLICY "debts_all_own"
+      ON public.debts
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "expenses_all_own"
-on public.expenses for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'expenses'
+      AND policyname = 'expenses_all_own'
+  ) THEN
+    CREATE POLICY "expenses_all_own"
+      ON public.expenses
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "savings_goals_all_own"
-on public.savings_goals for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'savings_goals'
+      AND policyname = 'savings_goals_all_own'
+  ) THEN
+    CREATE POLICY "savings_goals_all_own"
+      ON public.savings_goals
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "learning_progress_all_own"
-on public.learning_progress for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'learning_progress'
+      AND policyname = 'learning_progress_all_own'
+  ) THEN
+    CREATE POLICY "learning_progress_all_own"
+      ON public.learning_progress
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "activity_logs_all_own"
-on public.activity_logs for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'activity_logs'
+      AND policyname = 'activity_logs_all_own'
+  ) THEN
+    CREATE POLICY "activity_logs_all_own"
+      ON public.activity_logs
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;

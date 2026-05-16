@@ -18,10 +18,22 @@ create table if not exists public.import_sessions (
 
 alter table public.import_sessions enable row level security;
 
-create policy if not exists "import_sessions_all_own"
-  on public.import_sessions for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'import_sessions'
+      AND policyname = 'import_sessions_all_own'
+  ) THEN
+    CREATE POLICY "import_sessions_all_own"
+      ON public.import_sessions
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 create index if not exists idx_import_sessions_user_id
   on public.import_sessions(user_id);

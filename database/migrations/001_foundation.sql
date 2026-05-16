@@ -31,20 +31,68 @@ alter table public.profiles enable row level security;
 alter table public.money_intakes enable row level security;
 alter table public.financial_snapshots enable row level security;
 
-create policy if not exists "profiles_select_own"
-on public.profiles for select
-using (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'profiles'
+      AND policyname = 'profiles_select_own'
+  ) THEN
+    CREATE POLICY "profiles_select_own"
+      ON public.profiles
+      FOR SELECT
+      USING (auth.uid() = id);
+  END IF;
+END $$;
 
-create policy if not exists "profiles_update_own"
-on public.profiles for update
-using (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'profiles'
+      AND policyname = 'profiles_update_own'
+  ) THEN
+    CREATE POLICY "profiles_update_own"
+      ON public.profiles
+      FOR UPDATE
+      USING (auth.uid() = id);
+  END IF;
+END $$;
 
-create policy if not exists "money_intakes_all_own"
-on public.money_intakes for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'money_intakes'
+      AND policyname = 'money_intakes_all_own'
+  ) THEN
+    CREATE POLICY "money_intakes_all_own"
+      ON public.money_intakes
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-create policy if not exists "financial_snapshots_all_own"
-on public.financial_snapshots for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'financial_snapshots'
+      AND policyname = 'financial_snapshots_all_own'
+  ) THEN
+    CREATE POLICY "financial_snapshots_all_own"
+      ON public.financial_snapshots
+      FOR ALL
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
