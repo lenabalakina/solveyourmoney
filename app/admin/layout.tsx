@@ -1,12 +1,12 @@
+import { connection } from "next/server";
 import { requireAdminSession } from "@/server/dal/session";
-
-export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
   await requireAdminSession();
 
   return (
