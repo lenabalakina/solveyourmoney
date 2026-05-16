@@ -1,3 +1,4 @@
+// app/(auth)/forgot-password/page.tsx
 import Link from "next/link";
 import { Suspense } from "react";
 import { AuthMessage } from "@/components/auth/auth-message";
