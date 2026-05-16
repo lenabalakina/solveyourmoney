@@ -2,18 +2,13 @@ import type { ReactNode } from "react";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <main
-      className="app-bg"
-      style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "45fr 55fr" }}
-    >
-      {/* Left panel */}
+    <main className="app-bg min-h-dvh flex flex-col lg:grid lg:grid-cols-[45fr_55fr]">
+      {/* Left panel — hidden on mobile/tablet, visible at lg (1024px+) */}
       <div
-        className="auth-left-panel"
+        className="hidden lg:flex items-center"
         style={{
           background: "var(--bg-1)",
           borderRight: "1px solid var(--line)",
-          display: "flex",
-          alignItems: "center",
           padding: 48,
         }}
       >
@@ -102,16 +97,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* Right panel */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "40px 24px",
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 400 }}>
+      {/* Right panel — full width on mobile, right column at lg */}
+      <div className="flex-1 flex items-center justify-center px-5 py-12">
+        <div className="w-full max-w-sm sm:max-w-md">
           {children}
         </div>
       </div>

@@ -153,10 +153,6 @@ body {
     var(--bg-0);
 }
 
-@media (max-width: 767px) {
-  .auth-left-panel { display: none; }
-}
-
 /* ─── Card system ─── */
 .card {
   background: var(--bg-1);
