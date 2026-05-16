@@ -452,6 +452,25 @@ async function runTests() {
     }
   }
 
+  // Test: notifications schema validates correctly
+  {
+    resetEnv();
+    process.env.NEXT_PUBLIC_APP_ENV = "local";
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA = "true";
+    const mock = requireFresh(
+      path.join(__dirname, "..", "features", "notifications", "services", "notificationsMockService.ts"),
+    );
+    const schema = requireFresh(
+      path.join(__dirname, "..", "features", "notifications", "services", "notificationsSchema.ts"),
+    );
+    const result = mock.getNotifications({ userId: "user-1" });
+    schema.NotificationsResponseSchema.parse(result);
+    assert(Array.isArray(result.notifications), "notifications mock: notifications is array");
+    for (const n of result.notifications) {
+      assert(!n.body.includes("$"), `notification body must not contain $: "${n.body}"`);
+    }
+  }
+
   console.log("All tests passed (lightweight)");
 }
 
