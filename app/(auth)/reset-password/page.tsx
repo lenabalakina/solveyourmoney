@@ -1,13 +1,16 @@
+// app/(auth)/reset-password/page.tsx
 "use client";
 
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { updatePasswordAction, type AuthFormState } from "@/server/actions/auth";
+import { AuthField } from "@/components/auth/auth-field";
+import { AuthMessage } from "@/components/auth/auth-message";
 
 const initial: AuthFormState = { status: "idle", message: "" };
 
 export default function ResetPasswordPage() {
-  const [state, formAction, isPending] = useActionState(updatePasswordAction, initial);
-
+  const [state, formAction] = useActionState(updatePasswordAction, initial);
   return (
     <div className="card" style={{ padding: 28 }}>
       <p
@@ -29,46 +32,32 @@ export default function ResetPasswordPage() {
         Pick something strong that you&apos;ll remember.
       </p>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span className="f-xs muted">New password</span>
-          <input
-            required
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            style={{
-              height: 36,
-              background: "oklch(1 0 0 / 0.04)",
-              border: 0,
-              color: "var(--fg)",
-              font: "inherit",
-              padding: "0 12px",
-              borderRadius: 8,
-              boxShadow: "0 0 0 1px var(--line)",
-              outline: "none",
-              fontSize: 13,
-              width: "100%",
-            }}
-          />
-        </label>
-        {state.message && (
-          <p
-            className="f-xs"
-            style={{ color: state.status === "error" ? "var(--error, #f87171)" : "var(--fg-soft)" }}
-          >
-            {state.message}
-          </p>
-        )}
-        <button
-          className="btn primary"
-          type="submit"
-          disabled={isPending}
-          style={{ width: "100%", marginTop: 4 }}
-        >
-          {isPending ? "Saving…" : "Set new password"}
-        </button>
+        <AuthField
+          label="New password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          errorId={state.status === "error" ? "reset-msg" : undefined}
+        />
+        <AuthMessage state={state} id="reset-msg" />
+        <ResetSubmitButton />
       </form>
     </div>
+  );
+}
+
+function ResetSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      className="btn primary"
+      type="submit"
+      disabled={pending}
+      style={{ width: "100%", marginTop: 4, height: 44, fontSize: 14 }}
+    >
+      {pending ? "Saving…" : "Set new password"}
+    </button>
   );
 }
