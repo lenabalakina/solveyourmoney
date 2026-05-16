@@ -45,8 +45,8 @@ export function SignInForm() {
           </Link>
         </div>
       </div>
-      <SubmitButton pendingText="Signing in…">Sign in</SubmitButton>
       <AuthMessage state={state} id="signin-msg" />
+      <SubmitButton pendingText="Signing in…">Sign in</SubmitButton>
     </form>
   );
 }
@@ -79,8 +79,8 @@ export function SignUpForm() {
         required
         errorId={hasError ? "signup-msg" : undefined}
       />
-      <SubmitButton pendingText="Creating account…">Create account</SubmitButton>
       <AuthMessage state={state} id="signup-msg" />
+      <SubmitButton pendingText="Creating account…">Create account</SubmitButton>
     </form>
   );
 }
