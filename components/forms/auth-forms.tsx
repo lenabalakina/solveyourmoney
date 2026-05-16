@@ -1,3 +1,4 @@
+// components/forms/auth-forms.tsx
 "use client";
 
 import { useActionState } from "react";
@@ -8,16 +9,33 @@ import {
   signUpAction,
   type AuthFormState,
 } from "@/server/actions/auth";
+import { AuthField } from "@/components/auth/auth-field";
+import { AuthMessage } from "@/components/auth/auth-message";
 
 const initialState: AuthFormState = { status: "idle", message: "" };
 
 export function SignInForm() {
   const [state, action] = useActionState(signInAction, initialState);
+  const hasError = state.status === "error";
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Field label="Email" name="email" type="email" autoComplete="email" />
+      <AuthField
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        errorId={hasError ? "signin-msg" : undefined}
+      />
       <div>
-        <Field label="Password" name="password" type="password" autoComplete="current-password" />
+        <AuthField
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          errorId={hasError ? "signin-msg" : undefined}
+        />
         <div style={{ textAlign: "right", marginTop: 6 }}>
           <Link
             href="/forgot-password"
@@ -28,58 +46,42 @@ export function SignInForm() {
         </div>
       </div>
       <SubmitButton pendingText="Signing in…">Sign in</SubmitButton>
-      <FormMessage state={state} />
+      <AuthMessage state={state} id="signin-msg" />
     </form>
   );
 }
 
 export function SignUpForm() {
   const [state, action] = useActionState(signUpAction, initialState);
+  const hasError = state.status === "error";
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <Field label="Name" name="displayName" autoComplete="name" />
-      <Field label="Email" name="email" type="email" autoComplete="email" />
-      <Field label="Password" name="password" type="password" autoComplete="new-password" />
-      <SubmitButton pendingText="Creating account…">Create account</SubmitButton>
-      <FormMessage state={state} />
-    </form>
-  );
-}
-
-function Field({
-  label,
-  name,
-  type = "text",
-  autoComplete,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  autoComplete?: string;
-}) {
-  return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span className="f-xs muted">{label}</span>
-      <input
+      <AuthField
+        label="Name"
+        name="displayName"
+        autoComplete="name"
         required
-        name={name}
-        type={type}
-        autoComplete={autoComplete}
-        style={{
-          height: 36,
-          background: "oklch(1 0 0 / 0.04)",
-          border: 0,
-          color: "var(--fg)",
-          font: "inherit",
-          padding: "0 12px",
-          borderRadius: 8,
-          boxShadow: "0 0 0 1px var(--line)",
-          outline: "none",
-          fontSize: 13,
-          width: "100%",
-        }}
+        errorId={hasError ? "signup-msg" : undefined}
       />
-    </label>
+      <AuthField
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        errorId={hasError ? "signup-msg" : undefined}
+      />
+      <AuthField
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+        errorId={hasError ? "signup-msg" : undefined}
+      />
+      <SubmitButton pendingText="Creating account…">Create account</SubmitButton>
+      <AuthMessage state={state} id="signup-msg" />
+    </form>
   );
 }
 
@@ -96,27 +98,9 @@ function SubmitButton({
       className="btn primary"
       type="submit"
       disabled={pending}
-      style={{ width: "100%", marginTop: 4 }}
+      style={{ width: "100%", marginTop: 4, height: 44, fontSize: 14 }}
     >
       {pending ? pendingText : children}
     </button>
-  );
-}
-
-function FormMessage({ state }: { state: AuthFormState }) {
-  if (!state.message) return null;
-  return (
-    <div
-      role="alert"
-      style={{
-        background: "var(--danger-soft)",
-        color: "var(--danger)",
-        borderRadius: 8,
-        padding: "10px 12px",
-        fontSize: 13,
-      }}
-    >
-      {state.message}
-    </div>
   );
 }
