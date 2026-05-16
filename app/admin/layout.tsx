@@ -1,14 +1,16 @@
-import { connection } from "next/server";
+import { Suspense } from "react";
 import { requireAdminSession } from "@/server/dal/session";
 
-export default async function AdminLayout({
+async function AdminGuard({ children }: { children: React.ReactNode }) {
+  await requireAdminSession();
+  return <>{children}</>;
+}
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await connection();
-  await requireAdminSession();
-
   return (
     <main className="premium-grid min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -20,7 +22,9 @@ export default async function AdminLayout({
             Operational visibility for SolveYourMoney
           </h1>
         </div>
-        {children}
+        <Suspense>
+          <AdminGuard>{children}</AdminGuard>
+        </Suspense>
       </div>
     </main>
   );

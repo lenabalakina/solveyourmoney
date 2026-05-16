@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { signOutAction } from "@/server/actions/auth";
@@ -439,6 +439,40 @@ function MobileBottomNav({ active }: { active: AppNavKey }) {
   );
 }
 
+function MobileTopBarFallback() {
+  return (
+    <header
+      role="banner"
+      aria-label="SolveYourMoney"
+      className="flex lg:hidden"
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 30,
+        paddingTop: "env(safe-area-inset-top)",
+        background: "linear-gradient(180deg, oklch(0.16 0.014 282 / 0.85), oklch(0.135 0.012 282 / 0.85))",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: "1px solid var(--line)",
+      }}
+    >
+      <div style={{ height: 52 }} />
+    </header>
+  );
+}
+
+function SidebarFallback() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "6px 10px" }}>
+      <div style={{ height: 28, width: 120, borderRadius: 6, background: "oklch(1 0 0 / 0.06)" }} />
+      <div style={{ height: 96, borderRadius: "var(--r-md)", background: "oklch(1 0 0 / 0.04)" }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} style={{ height: 36, borderRadius: 8, background: "oklch(1 0 0 / 0.04)" }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({
   children,
   active,
@@ -448,13 +482,19 @@ export function AppShell({
 }) {
   return (
     <div className="app-bg min-h-screen" style={{ color: "var(--fg)" }}>
-      {/* Mobile top bar */}
-      <MobileTopBar active={active} />
+      {/* Mobile top bar — async (fetches session + gamification), suspends until ready */}
+      <Suspense fallback={<MobileTopBarFallback />}>
+        <MobileTopBar active={active} />
+      </Suspense>
 
       {/* Desktop sidebar (collapsible) + main content */}
       <DesktopSidebarShell
         active={active}
-        sidebarContents={<SidebarContents active={active} />}
+        sidebarContents={
+          <Suspense fallback={<SidebarFallback />}>
+            <SidebarContents active={active} />
+          </Suspense>
+        }
       >
         {children}
       </DesktopSidebarShell>

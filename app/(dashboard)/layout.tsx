@@ -1,12 +1,9 @@
-import { connection } from "next/server";
-import { requireSession } from "@/server/dal/session";
+import { Suspense } from "react";
 
-export default async function ProtectedDashboardLayout({
+export default function ProtectedDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await connection();
-  await requireSession();
-  return children;
+  return <Suspense>{children}</Suspense>;
 }
