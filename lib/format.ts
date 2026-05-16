@@ -1,5 +1,5 @@
 export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
@@ -40,7 +40,7 @@ export function formatDateLabel(value: string) {
     return "No date yet";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("nl-NL", {
     month: "short",
     year: "numeric",
   }).format(date);
@@ -52,7 +52,7 @@ export function formatRelativeDate(value: string) {
     return "Recently";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("nl-NL", {
     month: "short",
     day: "numeric",
   }).format(date);

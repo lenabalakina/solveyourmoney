@@ -423,6 +423,14 @@ async function runTests() {
     );
   }
 
+  // Test: formatCurrency uses EUR locale, not USD
+  {
+    const fmt = requireFresh(path.join(__dirname, "..", "lib", "format.ts"));
+    const result = fmt.formatCurrency(1234);
+    assert(!result.includes("$"), `formatCurrency must not produce dollar sign, got: ${result}`);
+    assert(result.includes("1.234") || result.includes("1,234"), `formatCurrency must format 1234, got: ${result}`);
+  }
+
   console.log("All tests passed (lightweight)");
 }
 
