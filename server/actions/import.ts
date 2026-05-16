@@ -17,10 +17,12 @@ const assignedTransactionSchema = z.object({
 
 const saveImportSchema = z.object({
   transactions: z.array(assignedTransactionSchema),
+  filename: z.string().optional(),
+  sourceType: z.string().optional(),
 });
 
 type SaveResult =
-  | { ok: true; count: number; duplicates: number }
+  | { ok: true; count: number; duplicates: number; importSessionId: string }
   | { ok: false; message: string };
 
 export async function saveImportedTransactions(
@@ -126,10 +128,36 @@ export async function saveImportedTransactions(
     }
   }
 
+  // Record the import session for history tracking
+  const filename = parsed.data.filename ?? "upload";
+  const sourceType = parsed.data.sourceType ?? "CSV";
+  const totalCount = parsed.data.transactions.length;
+  const status = savedCount > 0 ? "complete" : (totalCount > 0 ? "partial" : "complete");
+
+  const { data: importSession } = await supabase
+    .from("import_sessions")
+    .insert({
+      user_id: session.userId,
+      filename,
+      source_type: sourceType,
+      transaction_count: totalCount,
+      saved_count: savedCount,
+      duplicate_count: duplicateCount,
+      status,
+    })
+    .select("id")
+    .single();
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/debt");
   revalidatePath("/dashboard/budget");
   revalidatePath("/dashboard/savings");
+  revalidatePath("/dashboard/import");
 
-  return { ok: true, count: savedCount, duplicates: duplicateCount };
+  return {
+    ok: true,
+    count: savedCount,
+    duplicates: duplicateCount,
+    importSessionId: importSession?.id ?? "",
+  };
 }
