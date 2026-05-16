@@ -16,7 +16,11 @@ const envSchema = z.object({
   ADMIN_EMAIL_ALLOWLIST: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+export const env = envSchema.parse(
+  Object.fromEntries(
+    Object.entries(process.env).map(([k, v]) => [k, v === "" ? undefined : v]),
+  ),
+);
 
 export function isSupabaseConfigured() {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY);

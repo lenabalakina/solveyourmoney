@@ -11,8 +11,8 @@ export async function getGamificationData({
   supabaseClient?: unknown;
 }): Promise<GamificationResponse> {
   GamificationRequestSchema.parse({ userId });
-  const now = new Date().toISOString();
   const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
 
   if (!supabase) {
     const lvl = deriveLevel(0);

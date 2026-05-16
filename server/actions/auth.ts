@@ -34,6 +34,11 @@ export async function signUpAction(
     };
   }
 
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "http://localhost:3000";
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -41,6 +46,7 @@ export async function signUpAction(
       data: {
         display_name: parsed.data.displayName,
       },
+      emailRedirectTo: `${siteUrl}/callback`,
     },
   });
 
@@ -54,6 +60,15 @@ export async function signUpAction(
     targetType: "profile",
     targetId: data.user?.id ?? null,
   });
+
+  // When email confirmation is enabled, signUp() returns a user but no session.
+  // Redirect only if we actually have a session; otherwise tell them to check email.
+  if (!data.session) {
+    return {
+      status: "idle",
+      message: "Account created! Check your inbox to confirm your email before signing in.",
+    };
+  }
 
   redirect("/onboarding");
 }
