@@ -1,14 +1,36 @@
-"use client";
-
-import { useActionState } from "react";
 import Link from "next/link";
-import { requestPasswordResetAction, type AuthFormState } from "@/server/actions/auth";
+import { Suspense } from "react";
+import { AuthMessage } from "@/components/auth/auth-message";
+import { ForgotPasswordForm } from "./form";
 
-const initial: AuthFormState = { status: "idle", message: "" };
+async function ErrorDisplay({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
 
-export default function ForgotPasswordPage() {
-  const [state, formAction, isPending] = useActionState(requestPasswordResetAction, initial);
+  if (error !== "link_expired") {
+    return null;
+  }
 
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <AuthMessage
+        state={{
+          status: "error",
+          message: "That reset link has expired or was already used. Request a new one below.",
+        }}
+      />
+    </div>
+  );
+}
+
+export default function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   return (
     <>
       <div className="card" style={{ padding: 28 }}>
@@ -30,46 +52,10 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: 13, color: "var(--fg-soft)", marginBottom: 20 }}>
           Enter your email and we&apos;ll send a reset link.
         </p>
-        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span className="f-xs muted">Email</span>
-            <input
-              required
-              name="email"
-              type="email"
-              autoComplete="email"
-              style={{
-                height: 36,
-                background: "oklch(1 0 0 / 0.04)",
-                border: 0,
-                color: "var(--fg)",
-                font: "inherit",
-                padding: "0 12px",
-                borderRadius: 8,
-                boxShadow: "0 0 0 1px var(--line)",
-                outline: "none",
-                fontSize: 13,
-                width: "100%",
-              }}
-            />
-          </label>
-          {state.message && (
-            <p
-              className="f-xs"
-              style={{ color: state.status === "error" ? "var(--error, #f87171)" : "var(--fg-soft)" }}
-            >
-              {state.message}
-            </p>
-          )}
-          <button
-            className="btn primary"
-            type="submit"
-            disabled={isPending}
-            style={{ width: "100%", marginTop: 4 }}
-          >
-            {isPending ? "Sending…" : "Send reset link"}
-          </button>
-        </form>
+        <Suspense fallback={null}>
+          <ErrorDisplay searchParams={searchParams} />
+        </Suspense>
+        <ForgotPasswordForm />
       </div>
       <p
         className="f-xs"
