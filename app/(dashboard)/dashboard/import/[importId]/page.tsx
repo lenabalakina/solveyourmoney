@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/dashboard/app-shell";
 import { getImportDetail } from "@/features/imports/services/importsService";
 import { requireSession } from "@/server/dal/session";
@@ -47,7 +48,7 @@ export default async function ImportDetailPage({
             <span>{formatDate(importSession.createdAt)}</span>
           </div>
         </div>
-        <a href="/dashboard/import" className="btn ghost">← Back to imports</a>
+        <Link href="/dashboard/import" className="btn ghost">← Back to imports</Link>
       </div>
 
       <div className="metrics">
