@@ -58,7 +58,7 @@ export function SavingsGoalForm() {
       <input
         type="number"
         className="input mono"
-        placeholder="Target $"
+        placeholder="Target (€)"
         value={target}
         onChange={(e) => setTarget(e.target.value)}
         min="1"
