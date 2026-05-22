@@ -52,7 +52,7 @@ export function AddMoneyForm({ goalId, goalLabel }: { goalId: string; goalLabel:
       <input
         type="number"
         className="input mono"
-        placeholder="Amount $"
+        placeholder="Amount (€)"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         min="0.01"
